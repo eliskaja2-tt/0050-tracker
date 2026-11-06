@@ -31,6 +31,37 @@ out["tw"] = daily("0050.TW")
 out["us"] = {k: [{"d": x["d"], "c": x["c"]} for x in daily(s)]
              for k, s in {"spx": "^GSPC", "ixic": "^IXIC", "sox": "^SOX", "tsm": "TSM"}.items()}
 
+# 補資料：Yahoo 偶爾缺最近一天，改用證交所（TWSE）官方日成交資料補上比 Yahoo 更新的日期
+def twse_month(ym):
+    url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=%s01&stockNo=0050" % ym
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+        j = json.load(r)
+    rows = []
+    for x in j.get("data", []):
+        try:
+            y, m, d = x[0].split("/")
+            f = lambda v: float(v.replace(",", ""))
+            rows.append({"d": "%d-%s-%s" % (int(y) + 1911, m, d),
+                         "o": f(x[3]), "h": f(x[4]), "l": f(x[5]), "c": f(x[6])})
+        except (ValueError, IndexError):
+            pass  # 無成交時為 "--"
+    return rows
+
+try:
+    today = dt.date.today()
+    prev_month = today.replace(day=1) - dt.timedelta(days=1)
+    last = out["tw"][-1]["d"]
+    added = []
+    for ym in (prev_month.strftime("%Y%m"), today.strftime("%Y%m")):
+        for row in twse_month(ym):
+            if row["d"] > last:
+                out["tw"].append(row); added.append(row["d"])
+    out["tw"].sort(key=lambda x: x["d"])
+    if added:
+        print("Yahoo 缺少、已由證交所補上：", ", ".join(sorted(set(added))))
+except Exception as e:
+    print("證交所補資料失敗（不影響其他功能）：", e)
+
 # 盤中高低點出現時段（15 分 K，最近約 60 天）
 try:
     prev, gap = None, {}
