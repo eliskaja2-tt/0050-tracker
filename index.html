@@ -191,9 +191,20 @@ function buildForecast(){
  const usHTML=`<div class="small" style="margin-bottom:4px">昨日（${esc(U)}）</div>${dayRows}
   <div class="small" style="margin:12px 0 2px">最近一週（累計漲跌）</div>${weekRows}`;
  const weekHTML=`<h2>0050 最近一週</h2><div class="spark-row" style="border:0">${spark(wk.map(x=>+x.c))}</div>${twRows}`;
- return {forecastHTML,usHTML,weekHTML};
+ return {forecastHTML,usHTML,weekHTML,pc,predLow,predHigh,predClose,pR,actual};
 }
 let FC=null;try{FC=buildForecast()}catch(e){console.error(e)}
+// 分批買進價與「前一日收盤＋今日預估」連動
+function bandLink(p){
+ const prevC=FC?FC.pc:+latest.c, vsPrev=p/prevC-1;
+ if(!FC) return {vsPrev,limit:p,note:'未取得美股資料，僅以收盤價判斷'};
+ const tick=p>=50?0.05:0.01, raw=Math.min(p,FC.predLow*1.003), limit=Math.floor(raw/tick+1e-9)*tick;
+ let note;
+ if(FC.actual&&+FC.actual.l<=p) note='今日實際最低 '+fmt(+FC.actual.l)+'，已觸及';
+ else if(p>=FC.predLow) note='今日預估最低 '+fmt(FC.predLow)+'，有機會觸及';
+ else note='今日預估最低 '+fmt(FC.predLow)+'，不易觸及';
+ return {vsPrev,limit,note};
+}
 function render(){
  const budget=Math.max(0,safeNum($('budget')?.value,100000)), reserve=Math.max(0,safeNum($('reserve')?.value,30000));
  const tranche=Math.max(0,Math.min(100,safeNum($('tranche')?.value,25)))/100;
@@ -243,8 +254,8 @@ function render(){
  </section>
  <section class="card span7">
   <h2>分批買進價格參考</h2>
-  <p class="sub">以近一年最高價作為回檔基準，這是可調整的觀察規則，不代表價格到達就一定值得買。</p>
-  ${buyBands.map((b,i)=>{const p=high1y*(1+b.dd);const reached=latest.c<=p;return `<div class="zone"><div><strong>${b.label}</strong><br><small>${b.tag} · ${reached?'已低於參考價':'尚未到達參考價'}</small></div><div style="text-align:right"><strong>${fmt(p)} 元</strong><br><span class="pill ${reached?'good':'warn'}">${reached?'條件觸及':'等待觀察'}</span></div></div>`}).join('')}
+  <p class="sub">回檔價＝近一年最高價的固定比例，只會隨新高價或「距前收」變動。<b>今日掛單參考</b>則會隨前一日收盤與美股連動預估每天更新：取「回檔價」與「今日預估最低點＋0.3%」兩者較低者，並對齊檯面跳動單位。</p>
+  ${buyBands.map((b,i)=>{const p=high1y*(1+b.dd);const reached=latest.c<=p;const L=bandLink(p);return `<div class="zone"><div><strong>${b.label}</strong><br><small>${b.tag} · ${reached?'已低於參考價':'尚未到達參考價'}</small><br><small>回檔價 ${fmt(p)} 元（距前收 ${pct(L.vsPrev)}）</small></div><div style="text-align:right"><small>今日掛單參考</small><br><strong>${fmt(L.limit)} 元</strong><br><span class="pill ${reached?'good':'warn'}">${reached?'條件觸及':'等待觀察'}</span><br><small>${esc(L.note)}</small></div></div>`}).join('')}
   <div class="notice" style="margin-top:12px">請不要只依「距高點跌幅」買進。若基本面、整體市場或你的資金需求已改變，應重新評估，不要為了攤平而持續加碼。</div>
  </section>
  <section class="card span5">
