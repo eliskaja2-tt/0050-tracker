@@ -3,174 +3,360 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>0050 今日預估與進場提示</title>
+<meta name="theme-color" content="#f4f7fb">
+<title>0050 進出場決策儀表板（含今日預估）</title>
 <style>
-:root{--bg:#e9eff2;--card:#fff;--ink:#17262e;--sub:#5d6e77;--line:#d3dde2;--up:#c8372d;--dn:#1e8a5a;--accent:#0f5c6e;--band:#cfe3e9}
-@media (prefers-color-scheme:dark){:root{--bg:#10191e;--card:#18262d;--ink:#e6eef1;--sub:#8fa3ad;--line:#2b3d47;--up:#ff6b5e;--dn:#4cc690;--accent:#6cc3d6;--band:#24424d}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6}
-header{padding:28px 20px 8px;max-width:1280px;margin:0 auto}
-h1{font-size:26px;margin:0 0 4px;font-weight:700}
-.meta{color:var(--sub);font-size:14px}
-main{max-width:1280px;margin:0 auto;padding:12px 20px 40px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
-section.hero{grid-column:span 2;border:2px solid var(--accent)}
-@media(max-width:640px){section.hero{grid-column:span 1}}
-h2{font-size:16px;margin:0 0 10px}
-.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
-.row:last-child{border-bottom:0}
-.up{color:var(--up)}.dn{color:var(--dn)}
-.num{font-variant-numeric:tabular-nums;font-weight:600}
-.big{font-size:44px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
-.small{font-size:13px;color:var(--sub)}
-.spark{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
-.spark:last-child{border-bottom:0}
-.spark .n{width:86px}.spark svg{flex:1;height:30px}.spark .v{width:64px;text-align:right}
-.bars{display:flex;gap:3px;align-items:flex-end;height:60px;margin:8px 0 2px}
-.bars div{flex:1;background:var(--band);border-radius:2px 2px 0 0;min-height:2px}
-.bars div.top{background:var(--accent)}
-.lbl{display:flex;gap:3px;font-size:11px;color:var(--sub)}.lbl span{flex:1;text-align:center}
-.advice{border-left:4px solid var(--accent);padding:6px 12px;margin:10px 0;background:var(--bg);border-radius:0 6px 6px 0;font-size:15px}
-#err{display:none;max-width:1280px;margin:20px auto;padding:16px 20px;background:var(--card);border:1px solid var(--up);border-radius:10px}
-code{background:var(--bg);padding:2px 6px;border-radius:4px}
-footer{max-width:1280px;margin:0 auto;padding:0 20px 40px;color:var(--sub);font-size:13px}
+:root{--bg:#f4f7fb;--card:#fff;--ink:#17212f;--sub:#64748b;--line:#e2e8f0;--blue:#2563eb;--blue-soft:#eff6ff;--red:#c2413b;--green:#16845b;--amber:#a16207;--shadow:0 8px 26px rgba(15,23,42,.055)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.55}
+header{max-width:1200px;margin:auto;padding:28px 22px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+h1{font-size:clamp(24px,3vw,34px);letter-spacing:-.03em;margin:0;font-weight:850}h2{font-size:17px;margin:0 0 14px}h3{font-size:14px;margin:0 0 7px}.sub{color:var(--sub);font-size:13px}.tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#eaf0f7;color:#334155;padding:5px 10px;font-size:12px;font-weight:700}
+main{max-width:1200px;margin:auto;padding:12px 22px 38px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);min-width:0}.span12{grid-column:span 12}.span8{grid-column:span 8}.span7{grid-column:span 7}.span6{grid-column:span 6}.span5{grid-column:span 5}.span4{grid-column:span 4}
+.hero{background:linear-gradient(135deg,#102b46,#164e63);color:white;border:0}.hero .sub{color:#c6d5e3}.hero-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px;align-items:center}.signal{display:inline-flex;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:800;background:#fef3c7;color:#854d0e;margin-bottom:12px}.signal.green{background:#d1fae5;color:#065f46}.signal.red{background:#fee2e2;color:#991b1b}.big{font-size:clamp(36px,5vw,56px);font-weight:850;line-height:1.05;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.price{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{border:1px solid var(--line);border-radius:14px;padding:15px;min-width:0}.metric .value{font-size:clamp(20px,2.5vw,28px);font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.metric .label{font-size:12px;color:var(--sub);margin-bottom:7px}.green-text{color:var(--green)}.red-text{color:var(--red)}.amber-text{color:var(--amber)}
+
+.entry-price{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.entry-box{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:15px}
+.entry-box .eyebrow{font-size:12px;color:var(--sub);font-weight:700}
+.entry-box .entry-big{font-size:clamp(24px,3vw,34px);font-weight:850;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.entry-levels{display:grid;gap:8px;margin-top:12px}
+.entry-level{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.entry-level strong{font-variant-numeric:tabular-nums}
+
+.rows{display:grid;gap:0}.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}.row:last-child{border-bottom:0}.row strong{font-variant-numeric:tabular-nums;text-align:right}.bar-wrap{height:12px;background:#e8eef5;border-radius:99px;overflow:hidden;margin:10px 0}.bar{height:100%;border-radius:99px;background:linear-gradient(90deg,#60a5fa,#2563eb);width:0}.zone{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding:12px 0;border-bottom:1px solid var(--line)}.zone:last-child{border:0}.zone small{color:var(--sub)}.zone strong{font-size:16px;font-variant-numeric:tabular-nums}.pill{font-size:11px;font-weight:800;padding:3px 7px;border-radius:6px;background:#eff6ff;color:#1d4ed8;white-space:nowrap}.pill.warn{background:#fef3c7;color:#92400e}.pill.good{background:#dcfce7;color:#166534}
+input,select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;background:white;color:var(--ink);font:inherit;outline:none}input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #dbeafe}.field{display:grid;gap:6px}.field label{font-size:13px;color:#475569;font-weight:700}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.result{background:var(--blue-soft);border:1px solid #bfdbfe;border-radius:14px;padding:15px}.result .value{font-size:24px;font-weight:850;font-variant-numeric:tabular-nums}.btn{border:0;border-radius:10px;background:var(--blue);color:white;font-weight:800;padding:11px 14px;cursor:pointer}.btn.secondary{background:#e2e8f0;color:#334155}.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.chart{width:100%;height:190px;display:block}.chart-note{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--blue)}.dot.high{background:#d97706}.dot.price{background:#0f766e}.notice{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px 14px;border-radius:12px;font-size:13px}.muted-box{background:#f8fafc;border-radius:12px;padding:13px}.small{font-size:12px;color:var(--sub)}.up{color:var(--red)}.down{color:var(--green)}.empty{padding:16px;border-radius:12px;background:#f8fafc;color:var(--sub);font-size:13px}footer{max-width:1200px;margin:auto;padding:0 22px 32px;color:var(--sub);font-size:12px}
+@media(max-width:850px){.span8,.span7,.span6,.span5,.span4{grid-column:span 12}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-grid{grid-template-columns:1fr}header{display:block}.header-right{margin-top:12px}}
+@media(max-width:480px){main{padding:10px 12px 28px;gap:12px}header{padding:22px 14px 8px}.card{padding:16px;border-radius:15px}.metric-grid{gap:8px}.metric{padding:12px}.formgrid{grid-template-columns:1fr}.big{font-size:42px}}
+.fc-big{font-size:clamp(40px,6vw,60px);font-weight:850;line-height:1.05;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.spark-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}.spark-row:last-child{border:0}.spark-row .n{width:92px;flex:none}.spark-row svg{flex:1;height:30px;min-width:0}.spark-row .v{width:70px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.tbars{display:flex;gap:3px;align-items:flex-end;height:64px;margin:10px 0 2px}.tbars div{flex:1;background:#cfe0f5;border-radius:3px 3px 0 0;min-height:2px}.tbars div.top{background:var(--blue)}.tlbl{display:flex;gap:3px;font-size:11px;color:var(--sub)}.tlbl span{flex:1;text-align:center}
+.combo{border-left:4px solid var(--blue);background:var(--blue-soft);border-radius:0 12px 12px 0;padding:12px 14px;margin:12px 0;font-weight:700}
 </style>
 </head>
 <body>
 <header>
-  <h1>0050 今日預估與進場提示</h1>
-  <div class="meta" id="meta"></div>
+  <div><h1>0050 進出場決策儀表板</h1><div class="sub">把行情轉成可執行的分批策略；先看風險，再決定投入金額。</div></div>
+  <div class="header-right"><span class="tag" id="data-status">正在讀取行情資料…</span></div>
 </header>
-<div id="err">
-  找不到資料檔。請在本資料夾執行 <code>python update_data.py</code> 產生 <code>data.js</code>，再重新整理此頁。
-</div>
-<main id="app"></main>
+<main id="app">
+  <section class="card span12"><div class="empty">正在載入 data.js…</div></section>
+</main>
 <footer>
-  預估方式：以過去兩年「美股前一晚漲跌 → 0050 隔日漲跌」做迴歸（S&amp;P 500、那斯達克、費半、台積電 ADR），再依歷史盤中高低點出現時段推算進場時間。
-  這是統計估算，不保證準確，也不是投資建議。紅漲綠跌為台灣慣例。
+  本頁為個人策略試算工具，不構成投資建議。回檔幅度、均線及停利價格是觀察條件，不保證反彈或獲利。請先確認資料日期、ETF 分割調整與交易成本。紅漲綠跌為臺灣市場常見配色。
 </footer>
-
 <script src="data.js"></script>
 <script>
 (function(){
-  var D = window.DATA;
-  if(!D){ document.getElementById('err').style.display='block'; return; }
-  var NAMES={spx:'S&P 500',ixic:'那斯達克',sox:'費城半導體',tsm:'台積電 ADR'}, KEYS=['spx','ixic','sox','tsm'];
-  var pct=function(x){return (x>=0?'+':'')+(x*100).toFixed(2)+'%'};
-  var cls=function(x){return x>0?'up':x<0?'dn':''};
-  var f2=function(x){return x.toFixed(2)};
+'use strict';
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number.isFinite(n)?n.toLocaleString('zh-TW',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const money=n=>Number.isFinite(n)?Math.round(n).toLocaleString('zh-TW'):'—';
+const pct=n=>Number.isFinite(n)?(n>0?'+':'')+(n*100).toFixed(2)+'%':'—';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeNum=(v,def=0)=>Number.isFinite(Number(v))?Number(v):def;
+const loadSaved=(k,d)=>{try{const v=localStorage.getItem('0050-'+k);return v===null?d:v}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem('0050-'+k,v)}catch(e){}};
+const D=window.DATA;
+if(!D || !Array.isArray(D.tw) || !D.tw.length){
+  $('data-status').textContent='找不到 data.js';
+  $('app').innerHTML='<section class="card span12"><h2>無法載入行情資料</h2><p>這個 index.html 需要與原本的 <code>data.js</code> 放在同一個資料夾。請先執行原專案的 <code>python update_data.py</code> 產生資料檔，再重新整理。</p><p class="small">若你是直接在 GitHub Pages 開啟，請確認 data.js 已提交到同一個發布分支，且檔名大小寫完全一致。</p></section>';
+  return;
+}
+const tw=D.tw.filter(x=>Number.isFinite(+x.c)&&x.d).slice().sort((a,b)=>a.d.localeCompare(b.d));
+if(!tw.length){$('data-status').textContent='0050 資料格式不完整';return}
+const latest=tw[tw.length-1], prev=tw.length>1?tw[tw.length-2]:latest;
+const dateDays=n=>tw.slice(Math.max(0,tw.length-n));
+const mean=arr=>arr.length?arr.reduce((s,x)=>s+(+x.c),0)/arr.length:NaN;
+const highOf=arr=>Math.max.apply(null,arr.map(x=>+x.h||+x.c));
+const lowOf=arr=>Math.min.apply(null,arr.map(x=>+x.l||+x.c));
+const high1y=highOf(dateDays(252)), low1y=lowOf(dateDays(252));
+const allHigh=highOf(tw), drawdown=latest.c/high1y-1, allDraw=latest.c/allHigh-1;
+const ma20=mean(dateDays(20)),ma60=mean(dateDays(60)),ma120=mean(dateDays(120));
+const ret1=latest.c/prev.c-1;
+const history=tw.slice(-90);
+const recentHigh=highOf(dateDays(20));
+const trendScore=(latest.c>ma20?1:0)+(latest.c>ma60?1:0)+(ma20>ma60?1:0);
+let trendLabel=trendScore===3?'短中期趨勢偏強':trendScore===2?'趨勢訊號混合':trendScore===1?'趨勢偏弱，仍需觀察':'短中期趨勢偏弱';
+let signal='觀察等待', signalClass='', reason='價格位置與均線訊號尚未形成明確優勢。';
+if(drawdown<=-.15 && latest.c<ma60){signal='深度回檔：分批評估';signalClass='green';reason='距近一年高點回檔已達 15% 以上，但仍低於 60 日均線；只宜按預先設定的分批預算評估，不能假設已見底。';}
+else if(drawdown<=-.10){signal='回檔區：分批觀察';signalClass='green';reason='距近一年高點回檔達 10% 以上，可檢查基本策略與資金配置，再考慮小額分批。';}
+else if(drawdown<=-.05){signal='進入觀察區';signalClass='';reason='距近一年高點回檔達 5% 以上，先觀察均線與市場趨勢，不必一次投入。';}
+else if(latest.c>ma20 && latest.c>ma60 && drawdown>-.03){signal='接近高檔：避免追價';signalClass='red';reason='價格仍接近近一年高點且站在短中期均線上方；若要買，應遵守分批上限，避免因上漲而追高。';}
+const buyBands=[
+ {label:'第一批｜回檔 5%',dd:-.05,tag:'初步觀察'},
+ {label:'第二批｜回檔 10%',dd:-.10,tag:'分批評估'},
+ {label:'第三批｜回檔 15%',dd:-.15,tag:'較深回檔'}
+];
+const defaultBudget=loadSaved('budget','100000'),defaultReserve=loadSaved('reserve','30000');
+const defaultTranche=loadSaved('tranche','25'),defaultCost=loadSaved('cost',''),defaultShares=loadSaved('shares',''),defaultTarget=loadSaved('target','15');
+// ===== 美股連動預估（迴歸）與進場時段 =====
+function buildForecast(){
+ const KEYS=['spx','ixic','sox','tsm'], NAMES={spx:'S&P 500',ixic:'那斯達克',sox:'費城半導體',tsm:'台積電 ADR'};
+ if(!D.us||!KEYS.every(k=>Array.isArray(D.us[k])&&D.us[k].length>30)||tw.length<60) return null;
+ const ret={};
+ KEYS.forEach(k=>{ret[k]={};const a=D.us[k];for(let i=1;i<a.length;i++)ret[k][a[i].d]=a[i].c/a[i-1].c-1;});
+ const usDates=Object.keys(ret.spx).filter(d=>KEYS.every(k=>ret[k][d]!==undefined)).sort();
+ const U=usDates[usDates.length-1];
+ function solve(A,b){const n=b.length;for(let i=0;i<n;i++){let p=i;for(let j=i+1;j<n;j++)if(Math.abs(A[j][i])>Math.abs(A[p][i]))p=j;[A[i],A[p]]=[A[p],A[i]];[b[i],b[p]]=[b[p],b[i]];
+  for(let j=i+1;j<n;j++){const m=A[j][i]/A[i][i];for(let k=i;k<n;k++)A[j][k]-=m*A[i][k];b[j]-=m*b[i];}}
+  const x=new Array(n);for(let i=n-1;i>=0;i--){let v=b[i];for(let j=i+1;j<n;j++)v-=A[i][j]*x[j];x[i]=v/A[i][i];}return x;}
+ function ols(X,y){const n=X.length,k=X[0].length,A=[],b=[];let tr=0;
+  for(let i=0;i<k;i++){A.push(new Array(k).fill(0));b.push(0);}
+  for(let r=0;r<n;r++)for(let i=0;i<k;i++){b[i]+=X[r][i]*y[r];for(let j=0;j<k;j++)A[i][j]+=X[r][i]*X[r][j];}
+  for(let i=1;i<k;i++)tr+=A[i][i];const lam=0.05*tr/(k-1);for(let i=1;i<k;i++)A[i][i]+=lam;
+  const beta=solve(A,b);let sse=0,sst=0;const my=y.reduce((a,c)=>a+c,0)/n;
+  for(let r=0;r<n;r++){let p=0;for(let i=0;i<k;i++)p+=beta[i]*X[r][i];sse+=(y[r]-p)**2;sst+=(y[r]-my)**2;}
+  return {beta,sigma:Math.sqrt(sse/Math.max(1,n-k)),r2:1-sse/sst,n};}
+ const X=[],yR=[],yG=[],dLow=[],dHigh=[];let ptr=0;
+ for(let i=1;i<tw.length;i++){
+  const d=tw[i].d;while(ptr<usDates.length&&usDates[ptr]<d)ptr++;
+  const u=usDates[ptr-1];if(!u)continue;
+  const p=+tw[i-1].c,r=tw[i].c/p-1;
+  X.push([1].concat(KEYS.map(k=>ret[k][u])));yR.push(r);yG.push(tw[i].o/p-1);
+  dLow.push(tw[i].l/p-1-r);dHigh.push(tw[i].h/p-1-r);
+ }
+ if(X.length<60)return null;
+ const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
+ const mR=ols(X,yR),mG=ols(X,yG);
+ const xNow=[1].concat(KEYS.map(k=>ret[k][U]));
+ const pred=(m,x)=>m.beta.reduce((a,c,i)=>a+c*x[i],0);
+ const pR=pred(mR,xNow),pG=pred(mG,xNow),sig=mR.sigma;
+ let base=null,actual=null;
+ for(const r of tw){if(r.d<=U)base=r;else if(!actual)actual=r;}
+ if(!base)return null;
+ const pc=+base.c,predClose=pc*(1+pR),predLow=pc*(1+Math.min(pR,pG)+med(dLow)),predHigh=pc*(1+Math.max(pR,pG)+med(dHigh));
 
-  // ---- 美股報酬 ----
-  var ret={}, last={};
-  KEYS.forEach(function(k){
-    ret[k]={}; var a=D.us[k];
-    for(var i=1;i<a.length;i++) ret[k][a[i].d]=a[i].c/a[i-1].c-1;
-  });
-  var usDates=Object.keys(ret.spx).filter(function(d){return KEYS.every(function(k){return ret[k][d]!==undefined})}).sort();
-  var U=usDates[usDates.length-1];
+ const spark=vals=>{const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>(i*100/(vals.length-1)).toFixed(1)+','+(28-(v-mn)/rg*26).toFixed(1)).join(' ');
+  const c=vals[vals.length-1]>=vals[0]?'#c2413b':'#16845b';
+  return `<svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="${c}" stroke-width="2" vector-effect="non-scaling-stroke" points="${pts}"/></svg>`;};
+ const cc=v=>v>0?'up':v<0?'down':'';
 
-  // ---- 迴歸 ----
-  function solve(A,b){var n=b.length,i,j,k;for(i=0;i<n;i++){var p=i;for(j=i+1;j<n;j++)if(Math.abs(A[j][i])>Math.abs(A[p][i]))p=j;
-    var t=A[i];A[i]=A[p];A[p]=t;var s=b[i];b[i]=b[p];b[p]=s;
-    for(j=i+1;j<n;j++){var m=A[j][i]/A[i][i];for(k=i;k<n;k++)A[j][k]-=m*A[i][k];b[j]-=m*b[i];}}
-    var x=new Array(n);for(i=n-1;i>=0;i--){var v=b[i];for(j=i+1;j<n;j++)v-=A[i][j]*x[j];x[i]=v/A[i][i];}return x;}
-  function ols(X,y){var n=X.length,k=X[0].length,A=[],b=[],i,j,r,tr=0;
-    for(i=0;i<k;i++){A.push(new Array(k).fill(0));b.push(0);}
-    for(r=0;r<n;r++)for(i=0;i<k;i++){b[i]+=X[r][i]*y[r];for(j=0;j<k;j++)A[i][j]+=X[r][i]*X[r][j];}
-    for(i=1;i<k;i++)tr+=A[i][i];var lam=0.05*tr/(k-1);for(i=1;i<k;i++)A[i][i]+=lam;
-    var beta=solve(A,b),sse=0,sst=0,my=y.reduce(function(a,c){return a+c},0)/n;
-    for(r=0;r<n;r++){var p=0;for(i=0;i<k;i++)p+=beta[i]*X[r][i];sse+=Math.pow(y[r]-p,2);sst+=Math.pow(y[r]-my,2);}
-    return {beta:beta,sigma:Math.sqrt(sse/Math.max(1,n-k)),r2:1-sse/sst,n:n};}
-  function pred(m,x){return m.beta.reduce(function(a,c,i){return a+c*x[i]},0)}
+ // 區間圖
+ let lo=Math.min(predLow/pc-1,pR-sig)-.003,hi=Math.max(predHigh/pc-1,pR+sig)+.003;
+ if(actual){lo=Math.min(lo,actual.l/pc-1-.003);hi=Math.max(hi,actual.h/pc-1+.003);}
+ const X0=v=>10+(v-lo)/(hi-lo)*380;
+ const svg=`<svg viewBox="0 0 400 78" width="100%" role="img" aria-label="預估高低區間">
+  <rect x="${X0(pR-sig)}" y="26" width="${X0(pR+sig)-X0(pR-sig)}" height="16" rx="4" fill="#dbeafe"/>
+  <line x1="10" x2="390" y1="34" y2="34" stroke="#e2e8f0"/>
+  <line x1="${X0(0)}" x2="${X0(0)}" y1="18" y2="50" stroke="#64748b" stroke-dasharray="3 3"/>
+  <line x1="${X0(pR)}" x2="${X0(pR)}" y1="20" y2="48" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="${X0(predLow/pc-1)}" cy="34" r="5" fill="#16845b"/><circle cx="${X0(predHigh/pc-1)}" cy="34" r="5" fill="#c2413b"/>
+  ${actual?`<rect x="${X0(actual.l/pc-1)}" y="54" width="${Math.max(2,X0(actual.h/pc-1)-X0(actual.l/pc-1))}" height="6" rx="2" fill="#64748b" opacity=".55"/>`:''}
+  <text x="${X0(0)}" y="12" font-size="10" text-anchor="middle" fill="#64748b">前收 ${fmt(pc)}</text>
+  <text x="${X0(predLow/pc-1)}" y="75" font-size="10" text-anchor="middle" fill="#16845b">低 ${fmt(predLow)}</text>
+  <text x="${X0(predHigh/pc-1)}" y="75" font-size="10" text-anchor="middle" fill="#c2413b">高 ${fmt(predHigh)}</text></svg>`;
 
-  var tw=D.tw, X=[], yR=[], yG=[], dLow=[], dHigh=[], ptr=0;
-  for(var i=1;i<tw.length;i++){
-    var d=tw[i].d; while(ptr<usDates.length && usDates[ptr]<d) ptr++;
-    var u=usDates[ptr-1]; if(!u) continue;
-    var p=tw[i-1].c, r=tw[i].c/p-1;
-    X.push([1].concat(KEYS.map(function(k){return ret[k][u]})));
-    yR.push(r); yG.push(tw[i].o/p-1);
-    dLow.push(tw[i].l/p-1-r); dHigh.push(tw[i].h/p-1-r);
-  }
-  var med=function(a){var s=a.slice().sort(function(x,y){return x-y});return s[Math.floor(s.length/2)]};
-  var mR=ols(X,yR), mG=ols(X,yG);
-  var xNow=[1].concat(KEYS.map(function(k){return ret[k][U]}));
-  var pR=pred(mR,xNow), pG=pred(mG,xNow);
+ // 進場時段
+ const reg=pG<-.004?'dn':pG>.004?'up':'flat',regTxt={dn:'預期開低',flat:'預期平盤附近',up:'預期開高'}[reg];
+ const H=D.intraday&&D.intraday[reg];
+ const tl=i=>{const h=9+Math.floor(i/2),m=i%2?'30':'00',e=i%2?(h+1)+':00':h+':30';return h+':'+m+'–'+e};
+ const topIdx=a=>a.map((v,i)=>[v,i]).sort((x,y)=>y[0]-x[0]).slice(0,2).map(x=>x[1]);
+ const tbars=(a,top)=>{const mx=Math.max(...a)||1;return `<div class="tbars">${a.map((v,i)=>`<div class="${top.includes(i)?'top':''}" style="height:${v/mx*100}%" title="${tl(i)}：${v} 天"></div>`).join('')}</div><div class="tlbl">${a.map((v,i)=>`<span>${9+Math.floor(i/2)}${i%2?'.5':''}</span>`).join('')}</div>`;};
 
-  var base=null, actual=null;
-  for(i=0;i<tw.length;i++){ if(tw[i].d<=U) base=tw[i]; else if(!actual) actual=tw[i]; }
-  var pc=base.c, sig=mR.sigma;
-  var predClose=pc*(1+pR), predLow=pc*(1+Math.min(pR,pG)+med(dLow)), predHigh=pc*(1+Math.max(pR,pG)+med(dHigh));
+ // 結合「回檔位置」與「今日預估」的綜合判讀
+ const weak=pR<=-.003,strong=pR>=.003;
+ let combo;
+ if(drawdown<=-.05) combo=weak?'已回檔，但今日美股訊號仍偏弱：先別一次買，等「最常出現最低點」時段附近再投入第一批。':strong?'已回檔，且今日預期偏強：若計畫要買，可在開盤後先小額買第一批，不必等太久。':'已回檔，今日訊號中性：照分批計畫進行即可。';
+ else if(drawdown>-.03&&latest.c>ma20&&latest.c>ma60) combo=strong?'股價接近高檔且預期開高：避免追價，等回檔再評估。':weak?'股價在高檔，今日預期回檔：等回檔後再評估，不急著進場。':'股價在高檔，訊號中性：維持觀望或小額定期定額。';
+ else combo=weak?'今日預期偏弱：若要進場，可等低點時段再分批。':strong?'今日預期偏強：不建議追價，等回檔較穩。':'今日訊號中性：沒有時機優勢，照原計畫分批。';
 
-  // ---- 版面 ----
-  var app=document.getElementById('app'), html='';
-  document.getElementById('meta').textContent='資料更新：'+D.updated+'　｜　美股最新交易日：'+U+'　｜　0050 前收：'+f2(pc)+'（'+base.d+'）';
+ let timing='';
+ if(H&&H.n>=5){const tL=topIdx(H.low),tH=topIdx(H.high);
+  timing=`<div class="row"><span>最常出現最低點</span><strong class="down">${tL.map(tl).join('、')}</strong></div>
+  <div class="row"><span>最常出現最高點</span><strong class="up">${tH.map(tl).join('、')}</strong></div>
+  <div class="row"><span>參考進場價區</span><strong>${fmt(predLow)} ～ ${fmt((predLow+predClose)/2)}</strong></div>
+  <p class="small" style="margin:10px 0 0">過去約 60 天、同型態（${regTxt}）共 ${H.n} 天，各 30 分鐘時段出現日內最低點的天數：</p>${tbars(H.low,tL)}`;
+ } else timing='<div class="empty">盤中時段資料不足；請確認 data.js 內有 intraday 欄位（執行最新的 update_data.py）。</div>';
 
-  // 1 美股昨日
-  html+='<section><h2>美股昨日（'+U+'）</h2>';
-  KEYS.forEach(function(k){var v=ret[k][U];html+='<div class="row"><span>'+NAMES[k]+'</span><span class="num '+cls(v)+'">'+pct(v)+'</span></div>';});
-  html+='</section>';
+ const forecastHTML=`
+ <section class="card span7">
+  <h2>今日可能漲跌幅（美股連動預估）</h2>
+  <div class="fc-big ${cc(pR)}">${pct(pR)}</div>
+  <div class="small" style="margin-top:6px">預估收盤 ${fmt(predClose)} ｜ 預估開盤跳空 ${pct(pG)} ｜ 約 68% 區間 ${pct(pR-sig)} ～ ${pct(pR+sig)}</div>
+  ${svg}
+  <div class="small">綠點＝預估最低點，紅點＝預估最高點，藍線＝預估收盤${actual?'，灰條＝今日實際高低（'+esc(actual.d)+'）':''}。</div>
+  <div class="small">依據 ${esc(U)} 美股收盤；模型樣本 ${mR.n} 天，R² = ${mR.r2.toFixed(2)}（越高代表美股越能解釋 0050）。</div>
+ </section>
+ <section class="card span5">
+  <h2>建議進場時間點（${regTxt}）</h2>
+  <div class="combo">${esc(combo)}</div>
+  ${timing}
+ </section>`;
 
-  // 2 美股近一週
-  function spark(vals){var mn=Math.min.apply(0,vals),mx=Math.max.apply(0,vals),w=100,h=30,rg=(mx-mn)||1;
-    var pts=vals.map(function(v,i){return (i*w/(vals.length-1)).toFixed(1)+','+(h-2-(v-mn)/rg*(h-4)).toFixed(1)}).join(' ');
-    var c=vals[vals.length-1]>=vals[0]?'var(--up)':'var(--dn)';
-    return '<svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="'+c+'" stroke-width="2" vector-effect="non-scaling-stroke" points="'+pts+'"/></svg>';}
-  html+='<section><h2>美股最近一週</h2>';
-  KEYS.forEach(function(k){
-    var a=D.us[k].filter(function(x){return x.d<=U}).slice(-6), v=a.map(function(x){return x.c}), t=v[v.length-1]/v[0]-1;
-    html+='<div class="spark"><span class="n">'+NAMES[k]+'</span>'+spark(v)+'<span class="v num '+cls(t)+'">'+pct(t)+'</span></div>';});
-  html+='<div class="small">近 5 個交易日累計漲跌</div></section>';
-
-  // 3 0050 近一週
-  var wk=tw.filter(function(x){return actual?x.d<=actual.d:x.d<=base.d}).slice(-6);
-  html+='<section><h2>0050 最近一週</h2>'+spark(wk.map(function(x){return x.c}));
-  for(i=1;i<wk.length;i++){var r=wk[i].c/wk[i-1].c-1;
-    html+='<div class="row"><span>'+wk[i].d.slice(5)+'　收 '+f2(wk[i].c)+'</span><span class="num '+cls(r)+'">'+pct(r)+'</span></div>';}
-  html+='</section>';
-
-  // 4 今日預估（主視覺：預估高低區間）
-  var lo=Math.min(predLow/pc-1,-sig-0.004), hi=Math.max(predHigh/pc-1,sig+0.004), pad=0.003;
-  lo-=pad; hi+=pad; if(actual){lo=Math.min(lo,actual.l/pc-1-pad);hi=Math.max(hi,actual.h/pc-1+pad);}
-  var X0=function(v){return 10+(v-lo)/(hi-lo)*380};
-  var svg='<svg viewBox="0 0 400 74" width="100%" role="img" aria-label="預估區間">'
-   +'<rect x="'+X0(pR-sig)+'" y="26" width="'+(X0(pR+sig)-X0(pR-sig))+'" height="16" rx="3" fill="var(--band)"/>'
-   +'<line x1="10" x2="390" y1="34" y2="34" stroke="var(--line)"/>'
-   +'<line x1="'+X0(0)+'" x2="'+X0(0)+'" y1="18" y2="50" stroke="var(--sub)" stroke-dasharray="3 3"/>'
-   +'<line x1="'+X0(pR)+'" x2="'+X0(pR)+'" y1="20" y2="48" stroke="var(--accent)" stroke-width="3"/>'
-   +'<circle cx="'+X0(predLow/pc-1)+'" cy="34" r="5" fill="var(--dn)"/><circle cx="'+X0(predHigh/pc-1)+'" cy="34" r="5" fill="var(--up)"/>'
-   +(actual?'<rect x="'+X0(actual.l/pc-1)+'" y="54" width="'+(X0(actual.h/pc-1)-X0(actual.l/pc-1))+'" height="6" fill="var(--sub)" opacity=".6"/>':'')
-   +'<text x="'+X0(0)+'" y="12" font-size="10" text-anchor="middle" fill="var(--sub)">前收</text>'
-   +'<text x="'+X0(predLow/pc-1)+'" y="72" font-size="10" text-anchor="middle" fill="var(--dn)">低 '+f2(predLow)+'</text>'
-   +'<text x="'+X0(predHigh/pc-1)+'" y="72" font-size="10" text-anchor="middle" fill="var(--up)">高 '+f2(predHigh)+'</text></svg>';
-  html+='<section class="hero"><h2>今日可能漲跌幅（預估）</h2>'
-   +'<div class="big '+cls(pR)+'">'+pct(pR)+'</div>'
-   +'<div class="small">預估收盤 '+f2(predClose)+'　｜　預估開盤跳空 '+pct(pG)+'　｜　約 68% 區間 '+pct(pR-sig)+' ~ '+pct(pR+sig)+'</div>'+svg
-   +'<div class="small">綠點＝預估最低點，紅點＝預估最高點，粗線＝預估收盤'+(actual?'，灰條＝今日實際高低（'+actual.d+'）':'')+'。</div>'
-   +'<div class="small">模型：'+mR.n+' 個交易日，R² = '+mR.r2.toFixed(2)+'（越高代表美股越能解釋 0050）</div></section>';
-
-  // 5 進場時間
-  var reg=pG<-0.004?'dn':pG>0.004?'up':'flat', regTxt={dn:'預期開低',flat:'預期平盤附近',up:'預期開高'}[reg];
-  var H=D.intraday&&D.intraday[reg], tl=function(i){var h=9+Math.floor(i/2),m=i%2?'30':'00',e=i%2?(h+1)+':00':h+':30';return h+':'+m+'–'+e};
-  function topIdx(a){return a.map(function(v,i){return [v,i]}).sort(function(x,y){return y[0]-x[0]}).slice(0,2).map(function(x){return x[1]})}
-  function bars(a,top){var mx=Math.max.apply(0,a)||1;return '<div class="bars">'+a.map(function(v,i){return '<div class="'+(top.indexOf(i)>-1?'top':'')+'" style="height:'+(v/mx*100)+'%" title="'+tl(i)+'：'+v+' 天"></div>'}).join('')+'</div>'
-    +'<div class="lbl">'+a.map(function(v,i){return '<span>'+(9+Math.floor(i/2))+(i%2?'.5':'')+'</span>'}).join('')+'</div>';}
-  var adv;
-  if(pR<=-0.01) adv='預期明顯走弱：不要在開盤第一時間追進，等低點時段再分 2～3 批承接。';
-  else if(pR<-0.003) adv='預期小幅偏弱：可等低點時段附近再進場，不必急著搶開盤。';
-  else if(pR<0.003) adv='美股訊號不明顯：沒有時機優勢，適合照原定計畫分批或定期定額。';
-  else adv='預期偏強：開盤後追高風險較高，若要進場，等高點時段過後的回檔較穩。';
-  html+='<section class="hero"><h2>建議進場時間點（'+regTxt+'）</h2><div class="advice">'+adv+'</div>';
-  if(H&&H.n>=5){
-    var tL=topIdx(H.low), tH=topIdx(H.high);
-    html+='<div class="row"><span>最常出現最低點</span><span class="num dn">'+tL.map(tl).join('、')+'</span></div>'
-     +'<div class="row"><span>最常出現最高點</span><span class="num up">'+tH.map(tl).join('、')+'</span></div>'
-     +'<div class="row"><span>參考進場價區</span><span class="num">'+f2(predLow)+' ~ '+f2((predLow+predClose)/2)+'</span></div>'
-     +'<div class="small" style="margin-top:8px">過去 60 天同型態（'+regTxt+'）共 '+H.n+' 天，各 30 分鐘時段出現日內最低點的天數：</div>'+bars(H.low,tL);
-  } else html+='<div class="small">盤中資料不足，無法統計時段。可重新執行 update_data.py。</div>';
-  html+='</section>';
-
-  app.innerHTML=html;
+ const weekRows=KEYS.map(k=>{const a=D.us[k].filter(x=>x.d<=U).slice(-6),v=a.map(x=>+x.c),t=v[v.length-1]/v[0]-1;
+  return `<div class="spark-row"><span class="n">${NAMES[k]}</span>${spark(v)}<span class="v ${cc(t)}">${pct(t)}</span></div>`}).join('');
+ const dayRows=KEYS.map(k=>`<div class="row"><span>${NAMES[k]}</span><strong class="${cc(ret[k][U])}">${pct(ret[k][U])}</strong></div>`).join('');
+ const wk=tw.filter(x=>x.d<=(actual?actual.d:base.d)).slice(-6);
+ let twRows='';for(let i=1;i<wk.length;i++){const r=wk[i].c/wk[i-1].c-1;twRows+=`<div class="row"><span>${esc(wk[i].d.slice(5))}　收 ${fmt(+wk[i].c)}</span><strong class="${cc(r)}">${pct(r)}</strong></div>`;}
+ const usHTML=`<div class="small" style="margin-bottom:4px">昨日（${esc(U)}）</div>${dayRows}
+  <div class="small" style="margin:12px 0 2px">最近一週（累計漲跌）</div>${weekRows}`;
+ const weekHTML=`<h2>0050 最近一週</h2><div class="spark-row" style="border:0">${spark(wk.map(x=>+x.c))}</div>${twRows}`;
+ return {forecastHTML,usHTML,weekHTML};
+}
+let FC=null;try{FC=buildForecast()}catch(e){console.error(e)}
+function render(){
+ const budget=Math.max(0,safeNum($('budget')?.value,100000)), reserve=Math.max(0,safeNum($('reserve')?.value,30000));
+ const tranche=Math.max(0,Math.min(100,safeNum($('tranche')?.value,25)))/100;
+ const cost=Math.max(0,safeNum($('cost')?.value,0)),shares=Math.max(0,safeNum($('shares')?.value,0)),target=Math.max(0,safeNum($('target')?.value,15))/100;
+ const available=Math.max(0,budget-reserve),thisBudget=available*tranche;
+ const lotShares=latest.c>0?Math.floor(thisBudget/latest.c/1000)*1000:0, oddShares=latest.c>0?Math.floor(thisBudget/latest.c):0;
+ const targetPrice=cost>0?cost*(1+target):NaN, pnl=cost>0?shares*(latest.c-cost):NaN, pnlPct=cost>0?latest.c/cost-1:NaN;
+ const app=$('app');
+ app.innerHTML=`
+ <section class="card hero span12">
+   <div class="hero-grid">
+    <div><div class="signal ${signalClass}">${esc(signal)}</div><div class="sub">0050 最新收盤價 · ${esc(latest.d)}</div><div class="big">${fmt(latest.c)}</div><div style="margin-top:8px;font-weight:750" class="${ret1>0?'up':ret1<0?'down':''}">${pct(ret1)} <span class="sub">較前一交易日</span></div></div>
+    <div><h2 style="color:white;margin-bottom:8px">今天的策略提示</h2><p style="margin:0 0 12px">${esc(reason)}</p><div class="sub">趨勢判讀：${esc(trendLabel)}</div><div class="sub" style="margin-top:7px">提示依收盤資料計算，並非盤中即時訊號。</div></div>
+   </div>
+ </section>
+ ${FC?FC.forecastHTML:'<section class="card span12"><div class="empty">資料檔缺少美股資料，無法計算今日預估。</div></section>'}
+ <section class="card span12">
+  <h2>先看這 4 個關鍵數字</h2>
+  <div class="metric-grid">
+   <div class="metric"><div class="label">近一年最高價</div><div class="value">${fmt(high1y)}</div><div class="small">近約 252 個交易日</div></div>
+   <div class="metric"><div class="label">距近一年高點</div><div class="value ${drawdown<-.05?'green-text':''}">${pct(drawdown)}</div><div class="small">高點回檔幅度</div></div>
+   <div class="metric"><div class="label">近一年最低價</div><div class="value">${fmt(low1y)}</div><div class="small">同期間價格區間</div></div>
+   <div class="metric"><div class="label">歷史資料最高價</div><div class="value">${fmt(allHigh)}</div><div class="small">限目前 data.js 收錄範圍</div></div>
+  </div>
+  <div class="bar-wrap"><div class="bar" style="width:${Math.max(0,Math.min(100,(latest.c-low1y)/Math.max(.0001,high1y-low1y)*100))}%"></div></div>
+  <div class="row"><span>近一年價格區間位置</span><strong>${fmt(low1y)} ～ ${fmt(high1y)}</strong></div>
+  <div class="row"><span>距歷史資料最高價</span><strong class="${allDraw<-.05?'green-text':''}">${pct(allDraw)}（${fmt(allHigh-latest.c)} 元）</strong></div>
+  <p class="small">「歷史最高」僅代表資料檔收錄期間的最高價；資料若未涵蓋 ETF 成立以來全部歷史，不能視為真正的成立以來最高價。</p>
+ </section>
+ <section class="card span12">
+  <h2>今日建議買進價｜近期低點法</h2>
+  <p class="sub">以最近交易日最低價作為基準，再加上可接受的價差範圍。這個區塊用來規劃限價單，不代表價格到達就一定會反彈。</p>
+  <div class="entry-price">
+   <div class="entry-box"><div class="eyebrow">近期低點基準</div><div class="entry-big" id="recent-low-display">計算中</div><div class="small" id="recent-low-date">採用資料檔最新交易日</div></div>
+   <div class="entry-box"><div class="eyebrow">建議觀察買進區間</div><div class="entry-big" id="entry-range-display">計算中</div><div class="small">依低點基準加上可調整的價格緩衝</div></div>
+  </div>
+  <div class="entry-levels">
+   <div class="entry-level"><span><strong>積極觀察價</strong><br><span class="small">接近近期最低價</span></span><strong id="entry-aggressive">—</strong></div>
+   <div class="entry-level"><span><strong>一般觀察價</strong><br><span class="small">低點上方約 0.5%</span></span><strong id="entry-normal">—</strong></div>
+   <div class="entry-level"><span><strong>較寬鬆觀察價</strong><br><span class="small">低點上方約 1.5%</span></span><strong id="entry-wide">—</strong></div>
+  </div>
+  <div class="formgrid" style="margin-top:14px">
+   <div class="field"><label for="low-lookback">低點參考期間</label><select id="low-lookback"><option value="1">最新交易日最低價</option><option value="5" selected>最近 5 個交易日最低價</option><option value="10">最近 10 個交易日最低價</option><option value="20">最近 20 個交易日最低價</option></select></div>
+   <div class="field"><label for="entry-buffer">觀察區間上緣（低點以上 %）</label><select id="entry-buffer"><option value="0.5">0.5%</option><option value="1">1.0%</option><option value="1.5" selected>1.5%</option><option value="2">2.0%</option><option value="3">3.0%</option></select></div>
+  </div>
+  <div class="notice" style="margin-top:12px">重要：近期低點只是參考，不是支撐保證。若價格快速跌破低點，可能代表下跌趨勢延續；建議搭配均線、分批資金上限及停損／風險規則，不要單純因為「跌到低點附近」就一次買滿。</div>
+ </section>
+ <section class="card span7">
+  <h2>分批買進價格參考</h2>
+  <p class="sub">以近一年最高價作為回檔基準，這是可調整的觀察規則，不代表價格到達就一定值得買。</p>
+  ${buyBands.map((b,i)=>{const p=high1y*(1+b.dd);const reached=latest.c<=p;return `<div class="zone"><div><strong>${b.label}</strong><br><small>${b.tag} · ${reached?'已低於參考價':'尚未到達參考價'}</small></div><div style="text-align:right"><strong>${fmt(p)} 元</strong><br><span class="pill ${reached?'good':'warn'}">${reached?'條件觸及':'等待觀察'}</span></div></div>`}).join('')}
+  <div class="notice" style="margin-top:12px">請不要只依「距高點跌幅」買進。若基本面、整體市場或你的資金需求已改變，應重新評估，不要為了攤平而持續加碼。</div>
+ </section>
+ <section class="card span5">
+  <h2>趨勢確認</h2>
+  <div class="rows">
+   <div class="row"><span>20 日均線</span><strong>${fmt(ma20)} <span class="${latest.c>=ma20?'up':'down'}">${latest.c>=ma20?'股價在上':'股價在下'}</span></strong></div>
+   <div class="row"><span>60 日均線</span><strong>${fmt(ma60)} <span class="${latest.c>=ma60?'up':'down'}">${latest.c>=ma60?'股價在上':'股價在下'}</span></strong></div>
+   <div class="row"><span>120 日均線</span><strong>${fmt(ma120)} <span class="${latest.c>=ma120?'up':'down'}">${latest.c>=ma120?'股價在上':'股價在下'}</span></strong></div>
+   <div class="row"><span>近 20 日高點</span><strong>${fmt(recentHigh)}</strong></div>
+  </div>
+  <div class="muted-box" style="margin-top:12px"><strong>${esc(trendLabel)}</strong><div class="small">均線是趨勢輔助，不是單獨的買賣指令。盤整或急跌時也可能產生假訊號。</div></div>
+ </section>
+ <section class="card span8">
+  <h2>0050 收盤走勢（最近約 90 個交易日）</h2>
+  <svg id="price-chart" class="chart" viewBox="0 0 720 190" preserveAspectRatio="none" role="img" aria-label="0050 最近收盤走勢"></svg>
+  <div class="chart-note"><span><i class="dot price"></i>收盤價</span><span><i class="dot high"></i>近一年最高價</span><span class="small">圖表為價格走勢，非報酬率或還原股價。</span></div>
+ </section>
+ <section class="card span4">
+  <h2>歷史高點的賣出參考</h2>
+  <div class="row"><span>目前持有報酬</span><strong>${Number.isFinite(pnlPct)?pct(pnlPct):'請輸入成本'}</strong></div>
+  <div class="row"><span>停利目標價格</span><strong>${Number.isFinite(targetPrice)?fmt(targetPrice)+' 元':'請輸入成本'}</strong></div>
+  <div class="row"><span>距近一年高點</span><strong>${pct(drawdown)}</strong></div>
+  <p class="small" style="margin-top:12px">接近歷史高點不等於必須賣出。可先設定分批停利比例、保留部位及再平衡規則，避免只憑一個高點做決定。</p>
+ </section>
+ <section class="card span7">
+  <h2>買多少？個人資金試算</h2>
+  <div class="formgrid">
+   <div class="field"><label for="budget">預計投入總資金（元）</label><input id="budget" type="number" min="0" step="1000" value="${esc($('budget')?.value??defaultBudget)}"></div>
+   <div class="field"><label for="reserve">預留不投入現金（元）</label><input id="reserve" type="number" min="0" step="1000" value="${esc($('reserve')?.value??defaultReserve)}"></div>
+   <div class="field"><label for="tranche">本次使用可用資金比例</label><select id="tranche">${[10,15,20,25,33,50,75,100].map(v=>`<option value="${v}" ${safeNum($('tranche')?.value??defaultTranche,25)===v?'selected':''}>${v}%</option>`).join('')}</select></div>
+   <div class="field"><label for="cost">持有平均成本（元，選填）</label><input id="cost" type="number" min="0" step=".01" placeholder="例如 90" value="${esc($('cost')?.value??defaultCost)}"></div>
+   <div class="field"><label for="shares">持有股數（股，選填）</label><input id="shares" type="number" min="0" step="1" placeholder="例如 1000" value="${esc($('shares')?.value??defaultShares)}"></div>
+   <div class="field"><label for="target">停利目標報酬率</label><select id="target">${[5,8,10,12,15,20,25,30].map(v=>`<option value="${v}" ${safeNum($('target')?.value??defaultTarget,15)===v?'selected':''}>${v}%</option>`).join('')}</select></div>
+  </div>
+  <div class="result" style="margin-top:14px">
+   <div class="small">本次預算上限（不含交易成本）</div><div class="value">${money(thisBudget)} 元</div>
+   <div class="row"><span>可用資金（已扣預留現金）</span><strong>${money(available)} 元</strong></div>
+   <div class="row"><span>約可買整張</span><strong>${lotShares.toLocaleString('zh-TW')} 股（${Math.floor(lotShares/1000)} 張）</strong></div>
+   <div class="row"><span>若買零股約可買</span><strong>${oddShares.toLocaleString('zh-TW')} 股</strong></div>
+   <div class="row"><span>預估停利參考價</span><strong>${cost>0?fmt(cost*(1+target))+' 元':'尚未輸入平均成本'}</strong></div>
+   <div class="row"><span>目前持有未實現損益</span><strong class="${Number.isFinite(pnl)?(pnl>=0?'up':'down'):''}">${Number.isFinite(pnl)?(pnl>0?'+':'')+money(pnl)+' 元':'尚未輸入成本與股數'}</strong></div>
+  </div>
+  <div class="btnrow"><button class="btn" id="save-settings">儲存我的設定</button><button class="btn secondary" id="reset-settings">恢復預設值</button></div>
+  <p class="small">設定僅儲存在目前瀏覽器。整張／零股數量是概算，未計手續費及成交價差；下單前請確認券商規則。不要把緊急預備金或短期必要支出投入股票。</p>
+ </section>
+ <section class="card span5">
+  <h2>美股昨日與最近一週</h2>
+  <p class="sub">昨日漲跌與最近一週走勢，是上方今日預估的依據。</p>
+  <div id="us-list">${FC?FC.usHTML:renderUS()}</div>
+  <div class="notice" style="margin-top:12px">美股上漲不保證 0050 隔日上漲；匯率、台股消息、成分股權重及市場情緒都會影響結果。</div>
+ </section>
+ ${FC?`<section class="card span12">${FC.weekHTML}</section>`:''}
+ <section class="card span12">
+  <h2>讀懂這個儀表板</h2>
+  <div class="metric-grid">
+   <div class="metric"><div class="label">進場燈號</div><div style="font-weight:750">提醒檢查條件</div><div class="small">不是自動買進指令。</div></div>
+   <div class="metric"><div class="label">回檔價位</div><div style="font-weight:750">歷史價格參考</div><div class="small">跌幅大不代表一定便宜。</div></div>
+   <div class="metric"><div class="label">買進金額</div><div style="font-weight:750">受資金上限約束</div><div class="small">分批不等於無限攤平。</div></div>
+   <div class="metric"><div class="label">賣出參考</div><div style="font-weight:750">依成本與策略設定</div><div class="small">歷史高點不是必然賣點。</div></div>
+  </div>
+ </section>`;
+ updateEntryPrice();
+ drawChart();
+ bindInputs();
+ const lowLookback=$('low-lookback'), entryBuffer=$('entry-buffer');
+ if(lowLookback) lowLookback.addEventListener('change',updateEntryPrice);
+ if(entryBuffer) entryBuffer.addEventListener('change',updateEntryPrice);
+}
+function updateEntryPrice(){
+ const n=Math.max(1,Math.min(20,safeNum($('low-lookback')?.value,5)));
+ const buffer=Math.max(0,safeNum($('entry-buffer')?.value,1.5))/100;
+ const sample=tw.slice(-n);
+ const lows=sample.map(x=>Number.isFinite(+x.l)?+x.l:+x.c);
+ const recentLow=Math.min(...lows);
+ const lowDay=sample.find(x=>(Number.isFinite(+x.l)?+x.l:+x.c)===recentLow);
+ const aggressive=Math.ceil(recentLow*100)/100;
+ const normal=Math.ceil(recentLow*1.005*100)/100;
+ const wide=Math.ceil(recentLow*(1+buffer)*100)/100;
+ const high=Math.ceil(recentLow*(1+buffer)*100)/100;
+ if($('recent-low-display')) $('recent-low-display').textContent=fmt(recentLow);
+ if($('recent-low-date')) $('recent-low-date').textContent=(lowDay?lowDay.d:'近期資料')+' · 最近 '+n+' 個交易日';
+ if($('entry-range-display')) $('entry-range-display').textContent=fmt(aggressive)+'–'+fmt(high);
+ if($('entry-aggressive')) $('entry-aggressive').textContent=fmt(aggressive)+' 元';
+ if($('entry-normal')) $('entry-normal').textContent=fmt(normal)+' 元';
+ if($('entry-wide')) $('entry-wide').textContent=fmt(wide)+' 元';
+}
+function renderUS(){
+ if(!D.us)return '<div class="empty">資料檔沒有美股資料。</div>';
+ const names={spx:'S&P 500',ixic:'那斯達克',sox:'費城半導體',tsm:'台積電 ADR'};
+ return Object.keys(names).map(k=>{
+  const a=D.us[k];if(!Array.isArray(a)||a.length<2)return '';
+  const b=a[a.length-1],p=a[a.length-2],r=(+b.c)/(+p.c)-1;
+  return `<div class="row"><span>${names[k]} <span class="small">${esc(b.d)}</span></span><strong class="${r>=0?'up':'down'}">${pct(r)}</strong></div>`;
+ }).join('')||'<div class="empty">美股資料不足。</div>';
+}
+function drawChart(){
+ const svg=$('price-chart');if(!svg)return;
+ const a=history, vals=a.map(x=>+x.c),min=Math.min(...vals),max=Math.max(...vals,high1y),range=max-min||1;
+ const x=i=>24+i*(672/Math.max(1,a.length-1)),y=v=>164-(v-min)/range*135;
+ let grid='';
+ for(let i=0;i<4;i++){const yy=25+i*43;grid+=`<line x1="24" y1="${yy}" x2="696" y2="${yy}" stroke="#e2e8f0" stroke-dasharray="3 4"/><text x="4" y="${yy+4}" font-size="10" fill="#64748b">${fmt(max-(max-min)*i/3,0)}</text>`}
+ const points=vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+ const hiLine=y(high1y);
+ svg.innerHTML=grid+`<line x1="24" y1="${hiLine}" x2="696" y2="${hiLine}" stroke="#d97706" stroke-dasharray="5 4" opacity=".9"/><polyline points="${points}" fill="none" stroke="#0f766e" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(vals.length-1)}" cy="${y(vals[vals.length-1])}" r="4.5" fill="#0f766e"/><text x="696" y="13" text-anchor="end" font-size="11" fill="#64748b">最高 ${fmt(max)}</text><text x="24" y="184" font-size="10" fill="#64748b">${esc(a[0].d)}</text><text x="696" y="184" text-anchor="end" font-size="10" fill="#64748b">${esc(a[a.length-1].d)}</text>`;
+}
+function bindInputs(){
+ ['budget','reserve','tranche','cost','shares','target'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',()=>{const vals={budget:$('budget').value,reserve:$('reserve').value,tranche:$('tranche').value,cost:$('cost').value,shares:$('shares').value,target:$('target').value};render();Object.keys(vals).forEach(k=>{if($(k))$(k).value=vals[k]});});});
+ $('save-settings').addEventListener('click',()=>{['budget','reserve','tranche','cost','shares','target'].forEach(k=>save(k,$(k).value));$('data-status').textContent='設定已儲存於此瀏覽器';});
+ $('reset-settings').addEventListener('click',()=>{['budget','reserve','tranche','cost','shares','target'].forEach(k=>{try{localStorage.removeItem('0050-'+k)}catch(e){}});location.reload();});
+}
+$('data-status').textContent='資料更新：'+(D.updated||'日期未提供')+' · 最新資料：'+latest.d;
+render();
 })();
 </script>
 </body>
