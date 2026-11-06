@@ -18,7 +18,7 @@ def chart(sym, rng, itv):
     for i, t in enumerate(res.get("timestamp") or []):
         if q["close"][i] is None:
             continue
-        local = dt.datetime.utcfromtimestamp(t + off)
+        local = dt.datetime.fromtimestamp(t + off, dt.timezone.utc).replace(tzinfo=None)
         rows.append((local, q["open"][i], q["high"][i], q["low"][i], q["close"][i]))
     return rows
 
@@ -50,17 +50,23 @@ def twse_month(ym):
 try:
     today = dt.date.today()
     prev_month = today.replace(day=1) - dt.timedelta(days=1)
-    last = out["tw"][-1]["d"]
+    have = {x["d"] for x in out["tw"]}
     added = []
     for ym in (prev_month.strftime("%Y%m"), today.strftime("%Y%m")):
         for row in twse_month(ym):
-            if row["d"] > last:
-                out["tw"].append(row); added.append(row["d"])
+            if row["d"] not in have:          # Yahoo 沒有的交易日（含中間缺的）都補上
+                out["tw"].append(row); have.add(row["d"]); added.append(row["d"])
     out["tw"].sort(key=lambda x: x["d"])
     if added:
-        print("Yahoo 缺少、已由證交所補上：", ", ".join(sorted(set(added))))
+        print("Yahoo 缺少、已由證交所補上：", ", ".join(sorted(added)))
 except Exception as e:
     print("證交所補資料失敗（不影響其他功能）：", e)
+
+# 盤中執行時，Yahoo 會給「今天尚未收盤」的暫時 K 棒；收盤前先剔除，避免當成收盤價計算
+tw_now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) + dt.timedelta(hours=8)
+if out["tw"] and out["tw"][-1]["d"] == tw_now.strftime("%Y-%m-%d") and tw_now.hour * 60 + tw_now.minute < 13 * 60 + 40:
+    print("台股尚未收盤，略過今天的暫時資料：", out["tw"][-1]["d"])
+    out["tw"].pop()
 
 # 盤中高低點出現時段（15 分 K，最近約 60 天）
 try:
@@ -89,3 +95,5 @@ except Exception as e:
 with open("data.js", "w", encoding="utf-8") as f:
     f.write("window.DATA = " + json.dumps(out, ensure_ascii=False) + ";")
 print("完成：data.js，0050 共", len(out["tw"]), "筆，最新", out["tw"][-1]["d"])
+print("0050 最近 6 個交易日：", ", ".join(x["d"][5:] for x in out["tw"][-6:]))
+print("美股最近 3 個交易日：", ", ".join(x["d"][5:] for x in out["us"]["spx"][-3:]))
