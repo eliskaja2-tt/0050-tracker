@@ -86,6 +86,7 @@ const buyBands=[
  {label:'第二批｜回檔 10%',dd:-.10,tag:'分批評估'},
  {label:'第三批｜回檔 15%',dd:-.15,tag:'較深回檔'}
 ];
+const defaultAlloc=loadSaved('alloc','even');
 const defaultBudget=loadSaved('budget','100000'),defaultReserve=loadSaved('reserve','30000');
 const defaultTranche=loadSaved('tranche','25'),defaultCost=loadSaved('cost',''),defaultShares=loadSaved('shares',''),defaultTarget=loadSaved('target','15');
 // ===== 美股連動預估（迴歸）與進場時段 =====
@@ -195,16 +196,23 @@ function buildForecast(){
 }
 let FC=null;try{FC=buildForecast()}catch(e){console.error(e)}
 // 分批買進價與「前一日收盤＋今日預估」連動
-function bandLink(p){
- const prevC=FC?FC.pc:+latest.c, vsPrev=p/prevC-1;
- if(!FC) return {vsPrev,limit:p,note:'未取得美股資料，僅以收盤價判斷'};
- const tick=p>=50?0.05:0.01, raw=Math.min(p,FC.predLow*1.003), limit=Math.floor(raw/tick+1e-9)*tick;
- let note;
- if(FC.actual&&+FC.actual.l<=p) note='今日實際最低 '+fmt(+FC.actual.l)+'，已觸及';
- else if(p>=FC.predLow) note='今日預估最低 '+fmt(FC.predLow)+'，有機會觸及';
- else note='今日預估最低 '+fmt(FC.predLow)+'，不易觸及';
- return {vsPrev,limit,note};
+function bandPlan(){
+ const prevC=FC?FC.pc:+latest.c;let prevLim=null,prevP=null;
+ return buyBands.map(b=>{
+  const p=high1y*(1+b.dd),vsPrev=p/prevC-1,tick=p>=50?0.05:0.01;
+  if(!FC){return {p,vsPrev,limit:p,note:'未取得美股資料，僅以收盤價判斷'};}
+  // 第一批：回檔價與「預估最低點+0.3%」取低者；之後各批沿用原本的回檔間距往下排，避免價位重疊
+  const raw=prevLim===null?Math.min(p,FC.predLow*1.003):prevLim*p/prevP;
+  const limit=Math.floor(raw/tick+1e-9)*tick;
+  let note;
+  if(FC.actual&&+FC.actual.l<=limit) note='今日實際最低 '+fmt(+FC.actual.l)+'，已觸及';
+  else if(limit>=FC.predLow) note='今日預估最低 '+fmt(FC.predLow)+'，有機會觸及';
+  else note='今日預估最低 '+fmt(FC.predLow)+'，不易觸及';
+  prevLim=limit;prevP=p;
+  return {p,vsPrev,limit,note};
+ });
 }
+const PLAN=bandPlan();
 function render(){
  const budget=Math.max(0,safeNum($('budget')?.value,100000)), reserve=Math.max(0,safeNum($('reserve')?.value,30000));
  const tranche=Math.max(0,Math.min(100,safeNum($('tranche')?.value,25)))/100;
@@ -254,8 +262,8 @@ function render(){
  </section>
  <section class="card span7">
   <h2>分批買進價格參考</h2>
-  <p class="sub">回檔價＝近一年最高價的固定比例，只會隨新高價或「距前收」變動。<b>今日掛單參考</b>則會隨前一日收盤與美股連動預估每天更新：取「回檔價」與「今日預估最低點＋0.3%」兩者較低者，並對齊檯面跳動單位。</p>
-  ${buyBands.map((b,i)=>{const p=high1y*(1+b.dd);const reached=latest.c<=p;const L=bandLink(p);return `<div class="zone"><div><strong>${b.label}</strong><br><small>${b.tag} · ${reached?'已低於參考價':'尚未到達參考價'}</small><br><small>回檔價 ${fmt(p)} 元（距前收 ${pct(L.vsPrev)}）</small></div><div style="text-align:right"><small>今日掛單參考</small><br><strong>${fmt(L.limit)} 元</strong><br><span class="pill ${reached?'good':'warn'}">${reached?'條件觸及':'等待觀察'}</span><br><small>${esc(L.note)}</small></div></div>`}).join('')}
+  <p class="sub">回檔價＝近一年最高價的固定比例，只會隨新高價或「距前收」變動。<b>今日掛單參考</b>則會隨前一日收盤與美股連動預估每天更新：第一批取「回檔價」與「今日預估最低點＋0.3%」兩者較低者，第二、三批沿用原本的回檔間距往下排，並對齊跳動單位。</p>
+  ${buyBands.map((b,i)=>{const p=high1y*(1+b.dd);const reached=latest.c<=p;const L=PLAN[i];return `<div class="zone"><div><strong>${b.label}</strong><br><small>${b.tag} · ${reached?'已低於參考價':'尚未到達參考價'}</small><br><small>回檔價 ${fmt(p)} 元（距前收 ${pct(L.vsPrev)}）</small></div><div style="text-align:right"><small>今日掛單參考</small><br><strong>${fmt(L.limit)} 元</strong><br><span class="pill ${reached?'good':'warn'}">${reached?'條件觸及':'等待觀察'}</span><br><small>${esc(L.note)}</small></div></div>`}).join('')}
   <div class="notice" style="margin-top:12px">請不要只依「距高點跌幅」買進。若基本面、整體市場或你的資金需求已改變，應重新評估，不要為了攤平而持續加碼。</div>
  </section>
  <section class="card span5">
@@ -275,9 +283,7 @@ function render(){
  </section>
  <section class="card span4">
   <h2>歷史高點的賣出參考</h2>
-  <div class="row"><span>目前持有報酬</span><strong>${Number.isFinite(pnlPct)?pct(pnlPct):'請輸入成本'}</strong></div>
-  <div class="row"><span>停利目標價格</span><strong>${Number.isFinite(targetPrice)?fmt(targetPrice)+' 元':'請輸入成本'}</strong></div>
-  <div class="row"><span>距近一年高點</span><strong>${pct(drawdown)}</strong></div>
+  <div id="sell-out"></div>
   <p class="small" style="margin-top:12px">接近歷史高點不等於必須賣出。可先設定分批停利比例、保留部位及再平衡規則，避免只憑一個高點做決定。</p>
  </section>
  <section class="card span7">
@@ -289,15 +295,9 @@ function render(){
    <div class="field"><label for="cost">持有平均成本（元，選填）</label><input id="cost" type="number" min="0" step=".01" placeholder="例如 90" value="${esc($('cost')?.value??defaultCost)}"></div>
    <div class="field"><label for="shares">持有股數（股，選填）</label><input id="shares" type="number" min="0" step="1" placeholder="例如 1000" value="${esc($('shares')?.value??defaultShares)}"></div>
    <div class="field"><label for="target">停利目標報酬率</label><select id="target">${[5,8,10,12,15,20,25,30].map(v=>`<option value="${v}" ${safeNum($('target')?.value??defaultTarget,15)===v?'selected':''}>${v}%</option>`).join('')}</select></div>
+   <div class="field"><label for="alloc">分批資金配置（第一／二／三批）</label><select id="alloc">${[["even","均分（33／33／33）"],["more","越跌越多（20／30／50）"],["less","越跌越少（50／30／20）"]].map(o=>`<option value="${o[0]}" ${($('alloc')?.value??defaultAlloc)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
   </div>
-  <div class="result" style="margin-top:14px">
-   <div class="small">本次預算上限（不含交易成本）</div><div class="value">${money(thisBudget)} 元</div>
-   <div class="row"><span>可用資金（已扣預留現金）</span><strong>${money(available)} 元</strong></div>
-   <div class="row"><span>約可買整張</span><strong>${lotShares.toLocaleString('zh-TW')} 股（${Math.floor(lotShares/1000)} 張）</strong></div>
-   <div class="row"><span>若買零股約可買</span><strong>${oddShares.toLocaleString('zh-TW')} 股</strong></div>
-   <div class="row"><span>預估停利參考價</span><strong>${cost>0?fmt(cost*(1+target))+' 元':'尚未輸入平均成本'}</strong></div>
-   <div class="row"><span>目前持有未實現損益</span><strong class="${Number.isFinite(pnl)?(pnl>=0?'up':'down'):''}">${Number.isFinite(pnl)?(pnl>0?'+':'')+money(pnl)+' 元':'尚未輸入成本與股數'}</strong></div>
-  </div>
+  <div id="calc-out" style="margin-top:14px"></div>
   <div class="btnrow"><button class="btn" id="save-settings">儲存我的設定</button><button class="btn secondary" id="reset-settings">恢復預設值</button></div>
   <p class="small">設定僅儲存在目前瀏覽器。整張／零股數量是概算，未計手續費及成交價差；下單前請確認券商規則。不要把緊急預備金或短期必要支出投入股票。</p>
  </section>
@@ -320,6 +320,7 @@ function render(){
  updateEntryPrice();
  drawChart();
  bindInputs();
+ updateCalc();
  const lowLookback=$('low-lookback'), entryBuffer=$('entry-buffer');
  if(lowLookback) lowLookback.addEventListener('change',updateEntryPrice);
  if(entryBuffer) entryBuffer.addEventListener('change',updateEntryPrice);
@@ -342,6 +343,44 @@ function updateEntryPrice(){
  if($('entry-normal')) $('entry-normal').textContent=fmt(normal)+' 元';
  if($('entry-wide')) $('entry-wide').textContent=fmt(wide)+' 元';
 }
+function updateCalc(){
+ const num=(id,def)=>Math.max(0,safeNum($(id)?.value===''?def:$(id)?.value,def));
+ const budget=num('budget',100000),reserve=num('reserve',30000);
+ const tranche=Math.min(100,num('tranche',25))/100;
+ const cost=num('cost',0),shares=num('shares',0),target=num('target',15)/100;
+ const W={even:[1/3,1/3,1/3],more:[.2,.3,.5],less:[.5,.3,.2]}[$('alloc')?.value]||[1/3,1/3,1/3];
+ const available=Math.max(0,budget-reserve),thisBudget=available*tranche,px=+latest.c;
+ const lot=px>0?Math.floor(thisBudget/px/1000)*1000:0,odd=px>0?Math.floor(thisBudget/px):0;
+ let totSh=0,totAmt=0;
+ const rows=buyBands.map((b,i)=>{
+  const price=PLAN[i].limit,amt=thisBudget*W[i],sh=price>0?Math.floor(amt/price):0,lots=Math.floor(sh/1000);
+  totSh+=sh;totAmt+=sh*price;
+  return `<div class="row"><span><strong>${b.label}</strong><br><span class="small">掛單 ${fmt(price)} 元 · 預算 ${money(amt)} 元</span></span><strong>${sh.toLocaleString('zh-TW')} 股<br><span class="small">${lots} 張 + ${(sh-lots*1000).toLocaleString('zh-TW')} 零股</span></strong></div>`;
+ }).join('');
+ const avgFill=totSh>0?totAmt/totSh:NaN;
+ const newAvg=(totSh>0&&shares>0&&cost>0)?(cost*shares+totAmt)/(shares+totSh):NaN;
+ const warn=reserve>=budget?'<div class="notice" style="margin-top:10px">預留現金已大於或等於總資金，目前沒有可投入的資金。</div>':(thisBudget>0&&lot===0?'<div class="small" style="margin-top:8px">本次預算不足一張（約需 '+money(px*1000)+' 元），可改買零股。</div>':'');
+ const out=$('calc-out');
+ if(out) out.innerHTML=`<div class="result">
+   <div class="small">本次預算上限（不含交易成本）</div><div class="value">${money(thisBudget)} 元</div>
+   <div class="row"><span>可用資金（已扣預留現金）</span><strong>${money(available)} 元</strong></div>
+   <div class="row"><span>以最新收盤 ${fmt(px)}（${esc(latest.d)}）可買整張</span><strong>${lot.toLocaleString('zh-TW')} 股（${Math.floor(lot/1000)} 張）</strong></div>
+   <div class="row"><span>改買零股約可買</span><strong>${odd.toLocaleString('zh-TW')} 股</strong></div>
+   <div class="small" style="margin:12px 0 2px">依下方「今日掛單參考價」分批（跌到才成交，隨前日收盤與美股預估更新）：</div>
+   ${rows}
+   <div class="row"><span>三批全部成交合計</span><strong>${totSh.toLocaleString('zh-TW')} 股 · ${money(totAmt)} 元</strong></div>
+   <div class="row"><span>三批平均成交價</span><strong>${fmt(avgFill)}${Number.isFinite(avgFill)?' 元':''}</strong></div>
+   <div class="row"><span>若全部成交，持有新平均成本</span><strong>${Number.isFinite(newAvg)?fmt(newAvg)+' 元':'請輸入成本與股數'}</strong></div>
+   ${warn}</div>`;
+ const pnl=cost>0&&shares>0?shares*(px-cost):NaN,pnlPct=cost>0?px/cost-1:NaN,tp=cost>0?cost*(1+target):NaN;
+ const so=$('sell-out');
+ if(so) so.innerHTML=`<div class="row"><span>目前持有報酬</span><strong class="${Number.isFinite(pnlPct)?(pnlPct>=0?'up':'down'):''}">${Number.isFinite(pnlPct)?pct(pnlPct):'請輸入成本'}</strong></div>
+  <div class="row"><span>未實現損益</span><strong class="${Number.isFinite(pnl)?(pnl>=0?'up':'down'):''}">${Number.isFinite(pnl)?(pnl>0?'+':'')+money(pnl)+' 元':'請輸入成本與股數'}</strong></div>
+  <div class="row"><span>停利目標價格</span><strong>${Number.isFinite(tp)?fmt(tp)+' 元':'請輸入成本'}</strong></div>
+  <div class="row"><span>距停利價還差</span><strong>${Number.isFinite(tp)?pct(tp/px-1):'—'}</strong></div>
+  <div class="row"><span>達標時預估損益</span><strong>${Number.isFinite(tp)&&shares>0?'+'+money(shares*(tp-cost))+' 元':'—'}</strong></div>
+  <div class="row"><span>距近一年高點</span><strong>${pct(drawdown)}</strong></div>`;
+}
 function renderUS(){
  if(!D.us)return '<div class="empty">資料檔沒有美股資料。</div>';
  const names={spx:'S&P 500',ixic:'那斯達克',sox:'費城半導體',tsm:'台積電 ADR'};
@@ -362,9 +401,10 @@ function drawChart(){
  svg.innerHTML=grid+`<line x1="24" y1="${hiLine}" x2="696" y2="${hiLine}" stroke="#d97706" stroke-dasharray="5 4" opacity=".9"/><polyline points="${points}" fill="none" stroke="#0f766e" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(vals.length-1)}" cy="${y(vals[vals.length-1])}" r="4.5" fill="#0f766e"/><text x="696" y="13" text-anchor="end" font-size="11" fill="#64748b">最高 ${fmt(max)}</text><text x="24" y="184" font-size="10" fill="#64748b">${esc(a[0].d)}</text><text x="696" y="184" text-anchor="end" font-size="10" fill="#64748b">${esc(a[a.length-1].d)}</text>`;
 }
 function bindInputs(){
- ['budget','reserve','tranche','cost','shares','target'].forEach(id=>{const el=$(id);if(el)el.addEventListener('change',()=>{const vals={budget:$('budget').value,reserve:$('reserve').value,tranche:$('tranche').value,cost:$('cost').value,shares:$('shares').value,target:$('target').value};render();Object.keys(vals).forEach(k=>{if($(k))$(k).value=vals[k]});});});
- $('save-settings').addEventListener('click',()=>{['budget','reserve','tranche','cost','shares','target'].forEach(k=>save(k,$(k).value));$('data-status').textContent='設定已儲存於此瀏覽器';});
- $('reset-settings').addEventListener('click',()=>{['budget','reserve','tranche','cost','shares','target'].forEach(k=>{try{localStorage.removeItem('0050-'+k)}catch(e){}});location.reload();});
+ const ids=['budget','reserve','tranche','cost','shares','target','alloc'];
+ ids.forEach(id=>{const el=$(id);if(el){el.addEventListener('input',updateCalc);el.addEventListener('change',updateCalc);}});
+ $('save-settings').addEventListener('click',()=>{ids.forEach(k=>save(k,$(k).value));$('data-status').textContent='設定已儲存於此瀏覽器';});
+ $('reset-settings').addEventListener('click',()=>{ids.forEach(k=>{try{localStorage.removeItem('0050-'+k)}catch(e){}});location.reload();});
 }
 $('data-status').textContent='資料更新：'+(D.updated||'日期未提供')+' · 最新資料：'+latest.d;
 render();
