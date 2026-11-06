@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0050 今日預估與進場提示</title>
+<style>
+:root{--bg:#e9eff2;--card:#fff;--ink:#17262e;--sub:#5d6e77;--line:#d3dde2;--up:#c8372d;--dn:#1e8a5a;--accent:#0f5c6e;--band:#cfe3e9}
+@media (prefers-color-scheme:dark){:root{--bg:#10191e;--card:#18262d;--ink:#e6eef1;--sub:#8fa3ad;--line:#2b3d47;--up:#ff6b5e;--dn:#4cc690;--accent:#6cc3d6;--band:#24424d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6}
+header{padding:28px 20px 8px;max-width:1280px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;font-weight:700}
+.meta{color:var(--sub);font-size:14px}
+main{max-width:1280px;margin:0 auto;padding:12px 20px 40px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+section.hero{grid-column:span 2;border:2px solid var(--accent)}
+@media(max-width:640px){section.hero{grid-column:span 1}}
+h2{font-size:16px;margin:0 0 10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.row:last-child{border-bottom:0}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.num{font-variant-numeric:tabular-nums;font-weight:600}
+.big{font-size:44px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.small{font-size:13px;color:var(--sub)}
+.spark{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.spark:last-child{border-bottom:0}
+.spark .n{width:86px}.spark svg{flex:1;height:30px}.spark .v{width:64px;text-align:right}
+.bars{display:flex;gap:3px;align-items:flex-end;height:60px;margin:8px 0 2px}
+.bars div{flex:1;background:var(--band);border-radius:2px 2px 0 0;min-height:2px}
+.bars div.top{background:var(--accent)}
+.lbl{display:flex;gap:3px;font-size:11px;color:var(--sub)}.lbl span{flex:1;text-align:center}
+.advice{border-left:4px solid var(--accent);padding:6px 12px;margin:10px 0;background:var(--bg);border-radius:0 6px 6px 0;font-size:15px}
+#err{display:none;max-width:1280px;margin:20px auto;padding:16px 20px;background:var(--card);border:1px solid var(--up);border-radius:10px}
+code{background:var(--bg);padding:2px 6px;border-radius:4px}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 40px;color:var(--sub);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>0050 今日預估與進場提示</h1>
+  <div class="meta" id="meta"></div>
+</header>
+<div id="err">
+  找不到資料檔。請在本資料夾執行 <code>python update_data.py</code> 產生 <code>data.js</code>，再重新整理此頁。
+</div>
+<main id="app"></main>
+<footer>
+  預估方式：以過去兩年「美股前一晚漲跌 → 0050 隔日漲跌」做迴歸（S&amp;P 500、那斯達克、費半、台積電 ADR），再依歷史盤中高低點出現時段推算進場時間。
+  這是統計估算，不保證準確，也不是投資建議。紅漲綠跌為台灣慣例。
+</footer>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  var D = window.DATA;
+  if(!D){ document.getElementById('err').style.display='block'; return; }
+  var NAMES={spx:'S&P 500',ixic:'那斯達克',sox:'費城半導體',tsm:'台積電 ADR'}, KEYS=['spx','ixic','sox','tsm'];
+  var pct=function(x){return (x>=0?'+':'')+(x*100).toFixed(2)+'%'};
+  var cls=function(x){return x>0?'up':x<0?'dn':''};
+  var f2=function(x){return x.toFixed(2)};
+
+  // ---- 美股報酬 ----
+  var ret={}, last={};
+  KEYS.forEach(function(k){
+    ret[k]={}; var a=D.us[k];
+    for(var i=1;i<a.length;i++) ret[k][a[i].d]=a[i].c/a[i-1].c-1;
+  });
+  var usDates=Object.keys(ret.spx).filter(function(d){return KEYS.every(function(k){return ret[k][d]!==undefined})}).sort();
+  var U=usDates[usDates.length-1];
+
+  // ---- 迴歸 ----
+  function solve(A,b){var n=b.length,i,j,k;for(i=0;i<n;i++){var p=i;for(j=i+1;j<n;j++)if(Math.abs(A[j][i])>Math.abs(A[p][i]))p=j;
+    var t=A[i];A[i]=A[p];A[p]=t;var s=b[i];b[i]=b[p];b[p]=s;
+    for(j=i+1;j<n;j++){var m=A[j][i]/A[i][i];for(k=i;k<n;k++)A[j][k]-=m*A[i][k];b[j]-=m*b[i];}}
+    var x=new Array(n);for(i=n-1;i>=0;i--){var v=b[i];for(j=i+1;j<n;j++)v-=A[i][j]*x[j];x[i]=v/A[i][i];}return x;}
+  function ols(X,y){var n=X.length,k=X[0].length,A=[],b=[],i,j,r,tr=0;
+    for(i=0;i<k;i++){A.push(new Array(k).fill(0));b.push(0);}
+    for(r=0;r<n;r++)for(i=0;i<k;i++){b[i]+=X[r][i]*y[r];for(j=0;j<k;j++)A[i][j]+=X[r][i]*X[r][j];}
+    for(i=1;i<k;i++)tr+=A[i][i];var lam=0.05*tr/(k-1);for(i=1;i<k;i++)A[i][i]+=lam;
+    var beta=solve(A,b),sse=0,sst=0,my=y.reduce(function(a,c){return a+c},0)/n;
+    for(r=0;r<n;r++){var p=0;for(i=0;i<k;i++)p+=beta[i]*X[r][i];sse+=Math.pow(y[r]-p,2);sst+=Math.pow(y[r]-my,2);}
+    return {beta:beta,sigma:Math.sqrt(sse/Math.max(1,n-k)),r2:1-sse/sst,n:n};}
+  function pred(m,x){return m.beta.reduce(function(a,c,i){return a+c*x[i]},0)}
+
+  var tw=D.tw, X=[], yR=[], yG=[], dLow=[], dHigh=[], ptr=0;
+  for(var i=1;i<tw.length;i++){
+    var d=tw[i].d; while(ptr<usDates.length && usDates[ptr]<d) ptr++;
+    var u=usDates[ptr-1]; if(!u) continue;
+    var p=tw[i-1].c, r=tw[i].c/p-1;
+    X.push([1].concat(KEYS.map(function(k){return ret[k][u]})));
+    yR.push(r); yG.push(tw[i].o/p-1);
+    dLow.push(tw[i].l/p-1-r); dHigh.push(tw[i].h/p-1-r);
+  }
+  var med=function(a){var s=a.slice().sort(function(x,y){return x-y});return s[Math.floor(s.length/2)]};
+  var mR=ols(X,yR), mG=ols(X,yG);
+  var xNow=[1].concat(KEYS.map(function(k){return ret[k][U]}));
+  var pR=pred(mR,xNow), pG=pred(mG,xNow);
+
+  var base=null, actual=null;
+  for(i=0;i<tw.length;i++){ if(tw[i].d<=U) base=tw[i]; else if(!actual) actual=tw[i]; }
+  var pc=base.c, sig=mR.sigma;
+  var predClose=pc*(1+pR), predLow=pc*(1+Math.min(pR,pG)+med(dLow)), predHigh=pc*(1+Math.max(pR,pG)+med(dHigh));
+
+  // ---- 版面 ----
+  var app=document.getElementById('app'), html='';
+  document.getElementById('meta').textContent='資料更新：'+D.updated+'　｜　美股最新交易日：'+U+'　｜　0050 前收：'+f2(pc)+'（'+base.d+'）';
+
+  // 1 美股昨日
+  html+='<section><h2>美股昨日（'+U+'）</h2>';
+  KEYS.forEach(function(k){var v=ret[k][U];html+='<div class="row"><span>'+NAMES[k]+'</span><span class="num '+cls(v)+'">'+pct(v)+'</span></div>';});
+  html+='</section>';
+
+  // 2 美股近一週
+  function spark(vals){var mn=Math.min.apply(0,vals),mx=Math.max.apply(0,vals),w=100,h=30,rg=(mx-mn)||1;
+    var pts=vals.map(function(v,i){return (i*w/(vals.length-1)).toFixed(1)+','+(h-2-(v-mn)/rg*(h-4)).toFixed(1)}).join(' ');
+    var c=vals[vals.length-1]>=vals[0]?'var(--up)':'var(--dn)';
+    return '<svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="'+c+'" stroke-width="2" vector-effect="non-scaling-stroke" points="'+pts+'"/></svg>';}
+  html+='<section><h2>美股最近一週</h2>';
+  KEYS.forEach(function(k){
+    var a=D.us[k].filter(function(x){return x.d<=U}).slice(-6), v=a.map(function(x){return x.c}), t=v[v.length-1]/v[0]-1;
+    html+='<div class="spark"><span class="n">'+NAMES[k]+'</span>'+spark(v)+'<span class="v num '+cls(t)+'">'+pct(t)+'</span></div>';});
+  html+='<div class="small">近 5 個交易日累計漲跌</div></section>';
+
+  // 3 0050 近一週
+  var wk=tw.filter(function(x){return actual?x.d<=actual.d:x.d<=base.d}).slice(-6);
+  html+='<section><h2>0050 最近一週</h2>'+spark(wk.map(function(x){return x.c}));
+  for(i=1;i<wk.length;i++){var r=wk[i].c/wk[i-1].c-1;
+    html+='<div class="row"><span>'+wk[i].d.slice(5)+'　收 '+f2(wk[i].c)+'</span><span class="num '+cls(r)+'">'+pct(r)+'</span></div>';}
+  html+='</section>';
+
+  // 4 今日預估（主視覺：預估高低區間）
+  var lo=Math.min(predLow/pc-1,-sig-0.004), hi=Math.max(predHigh/pc-1,sig+0.004), pad=0.003;
+  lo-=pad; hi+=pad; if(actual){lo=Math.min(lo,actual.l/pc-1-pad);hi=Math.max(hi,actual.h/pc-1+pad);}
+  var X0=function(v){return 10+(v-lo)/(hi-lo)*380};
+  var svg='<svg viewBox="0 0 400 74" width="100%" role="img" aria-label="預估區間">'
+   +'<rect x="'+X0(pR-sig)+'" y="26" width="'+(X0(pR+sig)-X0(pR-sig))+'" height="16" rx="3" fill="var(--band)"/>'
+   +'<line x1="10" x2="390" y1="34" y2="34" stroke="var(--line)"/>'
+   +'<line x1="'+X0(0)+'" x2="'+X0(0)+'" y1="18" y2="50" stroke="var(--sub)" stroke-dasharray="3 3"/>'
+   +'<line x1="'+X0(pR)+'" x2="'+X0(pR)+'" y1="20" y2="48" stroke="var(--accent)" stroke-width="3"/>'
+   +'<circle cx="'+X0(predLow/pc-1)+'" cy="34" r="5" fill="var(--dn)"/><circle cx="'+X0(predHigh/pc-1)+'" cy="34" r="5" fill="var(--up)"/>'
+   +(actual?'<rect x="'+X0(actual.l/pc-1)+'" y="54" width="'+(X0(actual.h/pc-1)-X0(actual.l/pc-1))+'" height="6" fill="var(--sub)" opacity=".6"/>':'')
+   +'<text x="'+X0(0)+'" y="12" font-size="10" text-anchor="middle" fill="var(--sub)">前收</text>'
+   +'<text x="'+X0(predLow/pc-1)+'" y="72" font-size="10" text-anchor="middle" fill="var(--dn)">低 '+f2(predLow)+'</text>'
+   +'<text x="'+X0(predHigh/pc-1)+'" y="72" font-size="10" text-anchor="middle" fill="var(--up)">高 '+f2(predHigh)+'</text></svg>';
+  html+='<section class="hero"><h2>今日可能漲跌幅（預估）</h2>'
+   +'<div class="big '+cls(pR)+'">'+pct(pR)+'</div>'
+   +'<div class="small">預估收盤 '+f2(predClose)+'　｜　預估開盤跳空 '+pct(pG)+'　｜　約 68% 區間 '+pct(pR-sig)+' ~ '+pct(pR+sig)+'</div>'+svg
+   +'<div class="small">綠點＝預估最低點，紅點＝預估最高點，粗線＝預估收盤'+(actual?'，灰條＝今日實際高低（'+actual.d+'）':'')+'。</div>'
+   +'<div class="small">模型：'+mR.n+' 個交易日，R² = '+mR.r2.toFixed(2)+'（越高代表美股越能解釋 0050）</div></section>';
+
+  // 5 進場時間
+  var reg=pG<-0.004?'dn':pG>0.004?'up':'flat', regTxt={dn:'預期開低',flat:'預期平盤附近',up:'預期開高'}[reg];
+  var H=D.intraday&&D.intraday[reg], tl=function(i){var h=9+Math.floor(i/2),m=i%2?'30':'00',e=i%2?(h+1)+':00':h+':30';return h+':'+m+'–'+e};
+  function topIdx(a){return a.map(function(v,i){return [v,i]}).sort(function(x,y){return y[0]-x[0]}).slice(0,2).map(function(x){return x[1]})}
+  function bars(a,top){var mx=Math.max.apply(0,a)||1;return '<div class="bars">'+a.map(function(v,i){return '<div class="'+(top.indexOf(i)>-1?'top':'')+'" style="height:'+(v/mx*100)+'%" title="'+tl(i)+'：'+v+' 天"></div>'}).join('')+'</div>'
+    +'<div class="lbl">'+a.map(function(v,i){return '<span>'+(9+Math.floor(i/2))+(i%2?'.5':'')+'</span>'}).join('')+'</div>';}
+  var adv;
+  if(pR<=-0.01) adv='預期明顯走弱：不要在開盤第一時間追進，等低點時段再分 2～3 批承接。';
+  else if(pR<-0.003) adv='預期小幅偏弱：可等低點時段附近再進場，不必急著搶開盤。';
+  else if(pR<0.003) adv='美股訊號不明顯：沒有時機優勢，適合照原定計畫分批或定期定額。';
+  else adv='預期偏強：開盤後追高風險較高，若要進場，等高點時段過後的回檔較穩。';
+  html+='<section class="hero"><h2>建議進場時間點（'+regTxt+'）</h2><div class="advice">'+adv+'</div>';
+  if(H&&H.n>=5){
+    var tL=topIdx(H.low), tH=topIdx(H.high);
+    html+='<div class="row"><span>最常出現最低點</span><span class="num dn">'+tL.map(tl).join('、')+'</span></div>'
+     +'<div class="row"><span>最常出現最高點</span><span class="num up">'+tH.map(tl).join('、')+'</span></div>'
+     +'<div class="row"><span>參考進場價區</span><span class="num">'+f2(predLow)+' ~ '+f2((predLow+predClose)/2)+'</span></div>'
+     +'<div class="small" style="margin-top:8px">過去 60 天同型態（'+regTxt+'）共 '+H.n+' 天，各 30 分鐘時段出現日內最低點的天數：</div>'+bars(H.low,tL);
+  } else html+='<div class="small">盤中資料不足，無法統計時段。可重新執行 update_data.py。</div>';
+  html+='</section>';
+
+  app.innerHTML=html;
+})();
+</script>
+</body>
+</html>
